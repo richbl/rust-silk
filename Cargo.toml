@@ -1,0 +1,23 @@
+[package]
+  name = "silk-markdown-editor"
+  version = "0.1.0"
+  edition = "2024"
+
+[[bin]]
+  name = "silk-markdown-editor"
+  path = "main.rs"
+
+[dependencies]
+  relm4 = { version = "0.11", features = ["libadwaita", "macros", "gnome_46"] }
+  pulldown-cmark = "0.12"
+  webkit6 = "0.6"
+
+[lints.clippy]
+  all = "warn"
+  pedantic = "warn"
+  cognitive_complexity = "warn"
+  panic = "warn"
+  empty_line_after_doc_comments = "warn"
+  undocumented_unsafe_blocks = "warn"
+  unnecessary_safety_comment = "warn"
+  doc_markdown = "warn"
