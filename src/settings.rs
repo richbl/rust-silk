@@ -4,9 +4,12 @@
 
 use std::{fs, io, path::PathBuf};
 
+use crate::APP_VER;
 use relm4::adw;
 use relm4::gtk::{gdk, glib};
 use serde::{Deserialize, Serialize};
+
+const CONFIG_HEADER: &str = "# Silk Configuration (TOML)\n# ";
 
 /// User preferences view configuration structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -116,7 +119,12 @@ impl Settings {
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;
         }
-        let text = toml::to_string_pretty(self).map_err(io::Error::other)?;
+
+        let text = format!(
+            "{CONFIG_HEADER}{APP_VER}\n\n{}",
+            toml::to_string_pretty(self).map_err(io::Error::other)?
+        );
+
         fs::write(path, text)
     }
 }
