@@ -4,12 +4,49 @@
 
 use std::{fs, io, path::PathBuf};
 
-use crate::constants::APP_VER;
+use crate::constants::{APP_VER, DEFAULT_HEIGHT, DEFAULT_WIDTH};
 use relm4::adw;
 use relm4::gtk::{gdk, glib};
 use serde::{Deserialize, Serialize};
 
 const CONFIG_HEADER: &str = "# Silk Configuration (TOML)\n# ";
+
+/// Persisted window geometry
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct WindowSettings {
+    pub width: i32,
+    pub height: i32,
+    pub maximized: bool,
+    pub fullscreened: bool,
+}
+
+impl Default for WindowSettings {
+    fn default() -> Self {
+        Self {
+            width: DEFAULT_WIDTH,
+            height: DEFAULT_HEIGHT,
+            maximized: false,
+            fullscreened: false,
+        }
+    }
+}
+
+impl WindowSettings {
+    const MIN_WIDTH: i32 = 400;
+    const MIN_HEIGHT: i32 = 300;
+
+    // Guard against hand-edited or corrupt values
+    fn sanitized(mut self) -> Self {
+        if self.width < Self::MIN_WIDTH {
+            self.width = DEFAULT_WIDTH;
+        }
+        if self.height < Self::MIN_HEIGHT {
+            self.height = DEFAULT_HEIGHT;
+        }
+        self
+    }
+}
 
 /// User preferences view configuration structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -95,6 +132,7 @@ pub struct Settings {
     pub color_scheme: ColorScheme,
     pub editor_background: Option<String>,
     pub preview_background: Option<String>,
+    pub window: WindowSettings,
 }
 
 impl Settings {
@@ -104,17 +142,21 @@ impl Settings {
 
     /// Load settings from file or return default values
     pub fn load() -> Self {
-        match fs::read_to_string(Self::path()) {
+        let mut settings: Self = match fs::read_to_string(Self::path()) {
             Ok(text) => toml::from_str(&text).unwrap_or_else(|e| {
                 eprintln!("silk: ignoring malformed settings: {e}");
                 Self::default()
             }),
             Err(_) => Self::default(),
-        }
+        };
+        settings.window = settings.window.sanitized();
+        settings
     }
 
-    /// Save settings
+    /// Save settings atomically: write a sibling temp file, then rename over the config
     pub fn save(&self) -> io::Result<()> {
+        use std::io::Write;
+
         let path = Self::path();
         if let Some(dir) = path.parent() {
             fs::create_dir_all(dir)?;
@@ -125,7 +167,18 @@ impl Settings {
             toml::to_string_pretty(self).map_err(io::Error::other)?
         );
 
-        fs::write(path, text)
+        let tmp = path.with_extension("toml.tmp");
+        let result = (|| {
+            let mut file = fs::File::create(&tmp)?;
+            file.write_all(text.as_bytes())?;
+            file.sync_all()?;
+            fs::rename(&tmp, &path)
+        })();
+
+        if result.is_err() {
+            let _ = fs::remove_file(&tmp);
+        }
+        result
     }
 }
 
@@ -165,5 +218,14 @@ pub fn readable_foreground(background: &gdk::RGBA) -> &'static str {
         "#241f31"
     } else {
         "#ffffff"
+    }
+}
+
+/// Editor/preview base colors for the resolved light or dark style: (background, foreground)
+pub fn scheme_palette(dark: bool) -> (&'static str, &'static str) {
+    if dark {
+        ("#242424", "#ffffff")
+    } else {
+        ("#ffffff", "#241f31")
     }
 }
