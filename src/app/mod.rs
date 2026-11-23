@@ -12,13 +12,16 @@ use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
 use webkit6::WebView;
 
-use crate::constants::APP_VER;
+use crate::constants::{ABOUT, APP_ID, APP_NAME, APP_VER};
 use crate::preferences::Preferences;
 use crate::settings::{ColorScheme, Settings, ViewMode, WindowSettings};
 
 // The menu! macro below refers to these action types by name
 use actions::{AboutAction, PreferencesAction, SaveAsAction, register_window_actions};
 use view_menu::{ViewRadios, build_view_popover};
+
+/// Issue tracker used by the "Report an issue" row
+const ISSUE_URL: &str = "https://github.com/richbl/rust-silk/issues/new?template=issue-report.md";
 
 /// Actions that discard the current document and therefore must first respect unsaved changes
 #[derive(Debug, Clone, Copy)]
@@ -126,12 +129,15 @@ impl App {
     // Shows the about dialog for the application
     fn show_about(&self) {
         adw::AboutDialog::builder()
-            .application_name("Silk")
-            .application_icon("accessories-text-editor")
-            .developer_name("The Silk Authors")
+            .application_name(APP_NAME)
+            .application_icon(APP_ID)
             .version(env!("CARGO_PKG_VERSION"))
-            .comments("A minimal Markdown editor for GNOME")
-            .license_type(gtk::License::Gpl30)
+            .comments(ABOUT)
+            .copyright("Copyright ©2026 Rich Bloch")
+            .issue_url(ISSUE_URL)
+            .developers(vec!["Rich Bloch".to_owned()])
+            .website("https://github.com/richbl/rust-silk")
+            .license_type(gtk::License::MitX11)
             .build()
             .present(Some(&self.window));
     }
@@ -187,9 +193,9 @@ fn connect_close_request(
 // Create the text buffer pre-filled with the welcome text, and notify the app when it changes
 fn build_buffer(sender: &ComponentSender<App>) -> gtk::TextBuffer {
     let welcome = format!(
-        "# Welcome to Silk {APP_VER}\n\nStart typing **Markdown** on the left, \
-        and it'll get rendered on the right.\n\n- [x] Open, edit and save files\n\
-        - [x] Choose which panes to show\n- [x] Customize backgrounds in *Preferences*\n"
+        "# Welcome to {APP_NAME} {APP_VER}\n\n## {ABOUT}\n\nStart typing **Markdown** on the left, \
+        and it'll get rendered on the right.\n\n- Open, edit and save files\n\
+        - Choose which panes to show\n- Customize color themes/background colors in *Preferences*\n"
     );
 
     let buffer = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
@@ -382,6 +388,11 @@ impl SimpleComponent for App {
             dirty: false,
             preview_ready: false,
         };
+
+        if let Some(display) = gtk::gdk::Display::default() {
+            let path = format!("/{}/icons", APP_ID.replace('.', "/"));
+            gtk::IconTheme::for_display(&display).add_resource_path(&path);
+        }
 
         let widgets = view_output!();
 
