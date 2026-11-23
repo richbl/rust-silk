@@ -6,25 +6,27 @@ use relm4::prelude::*;
 
 use super::{App, Msg};
 use crate::preferences::PrefsMsg;
-use crate::settings::{Settings, parse_color, readable_foreground};
+use crate::settings::{Settings, parse_color, readable_foreground, scheme_palette};
 
 impl App {
-    // Apply the editor CSS styling based on current settings
+    // Apply the editor CSS: custom background if set, otherwise the resolved scheme palette
     pub(super) fn apply_editor_css(&self) {
-        let css = self
+        let (bg, fg) = if let Some((bg, rgba)) = self
             .settings
             .editor_background
             .as_deref()
             .and_then(|c| parse_color(c).map(|rgba| (c, rgba)))
-            .map(|(bg, rgba)| {
-                format!(
-                    "textview.silk-editor, textview.silk-editor text \
-                     {{ background-color: {bg}; color: {}; }}",
-                    readable_foreground(&rgba)
-                )
-            })
-            .unwrap_or_default();
-        self.editor_css.load_from_string(&css);
+        {
+            (bg.to_owned(), readable_foreground(&rgba))
+        } else {
+            let (bg, fg) = scheme_palette(adw::StyleManager::default().is_dark());
+            (bg.to_owned(), fg)
+        };
+
+        self.editor_css.load_from_string(&format!(
+            "textview.silk-editor, textview.silk-editor text \
+             {{ background-color: {bg}; color: {fg}; }}"
+        ));
     }
 
     // Handle settings change event or update window size/state depending on the application context

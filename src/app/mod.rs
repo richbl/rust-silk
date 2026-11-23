@@ -12,9 +12,9 @@ use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
 use webkit6::WebView;
 
-use crate::constants::{APP_VER, DEFAULT_HEIGHT, DEFAULT_WIDTH};
+use crate::constants::APP_VER;
 use crate::preferences::Preferences;
-use crate::settings::{ColorScheme, Settings, ViewMode};
+use crate::settings::{ColorScheme, Settings, ViewMode, WindowSettings};
 
 // The menu! macro below refers to these action types by name
 use actions::{AboutAction, PreferencesAction, SaveAsAction, register_window_actions};
@@ -46,6 +46,7 @@ pub enum Msg {
     SetViewMode(ViewMode),
     SetColorScheme(ColorScheme),
     SettingsChanged(Settings),
+    StyleChanged,
     ShowPreferences,
     ShowAbout,
     Toast(String),
@@ -157,12 +158,65 @@ fn connect_close_request(
     let sender = sender.clone();
     let buffer = buffer.clone();
 
-    root.connect_close_request(move |_| {
+    root.connect_close_request(move |window| {
         if buffer.is_modified() {
             sender.input(Msg::Request(Action::Close));
-            glib::Propagation::Stop
+            return glib::Propagation::Stop;
+        }
+
+        // default_size() tracks normal resizes and ignores maximized/fullscreen forced sizes
+        let (width, height) = window.default_size();
+
+        // Re-read from disk: the file already holds the latest preferences, because
+        // apply_settings() saves on every change
+        let mut settings = Settings::load();
+        settings.window = WindowSettings {
+            width,
+            height,
+            maximized: window.is_maximized(),
+            fullscreened: window.is_fullscreen(),
+        };
+        if let Err(e) = settings.save() {
+            eprintln!("silk: could not save window state: {e}");
+        }
+
+        glib::Propagation::Proceed
+    });
+}
+
+// Create the text buffer pre-filled with the welcome text, and notify the app when it changes
+fn build_buffer(sender: &ComponentSender<App>) -> gtk::TextBuffer {
+    let welcome = format!(
+        "# Welcome to Silk {APP_VER}\n\nStart typing **Markdown** on the left, \
+        and it'll get rendered on the right.\n\n- [x] Open, edit and save files\n\
+        - [x] Choose which panes to show\n- [x] Customize backgrounds in *Preferences*\n"
+    );
+
+    let buffer = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
+    buffer.set_text(&welcome);
+    buffer.set_modified(false);
+
+    let sender = sender.clone();
+    buffer.connect_changed(move |_| sender.input(Msg::BufferChanged));
+
+    buffer
+}
+
+// Re-apply the editor styling whenever the system light/dark preference changes
+fn connect_style_changes(sender: &ComponentSender<App>) {
+    let sender = sender.clone();
+    adw::StyleManager::default().connect_dark_notify(move |_| sender.input(Msg::StyleChanged));
+}
+
+// Split the editor and preview 50/50 once the paned has a real width, then stop
+fn center_paned(paned: &gtk::Paned) {
+    paned.add_tick_callback(|paned, _| {
+        let width = paned.width();
+        if width > 0 {
+            paned.set_position(width / 2);
+            glib::ControlFlow::Break
         } else {
-            glib::Propagation::Proceed
+            glib::ControlFlow::Continue
         }
     });
 }
@@ -187,7 +241,9 @@ impl SimpleComponent for App {
 
     view! {
         adw::ApplicationWindow {
-            set_default_size: (DEFAULT_WIDTH, DEFAULT_HEIGHT),
+            set_default_size: (model.settings.window.width, model.settings.window.height),
+            set_maximized: model.settings.window.maximized,
+            set_fullscreened: model.settings.window.fullscreened,
             #[watch]
             set_title: Some(&model.title()),
 
@@ -256,7 +312,7 @@ impl SimpleComponent for App {
                         set_resize_end_child: true,
                         set_shrink_start_child: false,
                         set_shrink_end_child: false,
-                        set_position: 500,
+                        set_position: model.settings.window.width / 2,
 
                         set_end_child: Some(&web_view),
 
@@ -299,24 +355,11 @@ impl SimpleComponent for App {
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
         let settings = Settings::load();
+
         adw::StyleManager::default().set_color_scheme(settings.color_scheme.to_adw());
 
-        let welcome = format!(
-            "# Welcome to Silk {APP_VER}\n\nStart typing **Markdown** on the left, \
-        and it'll get rendered on the right.\n\n- [x] Open, edit and save files\n\
-        - [x] Choose which panes to show\n- [x] Customize backgrounds in *Preferences*\n"
-        );
-
-        let buffer = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
-        buffer.set_text(&welcome);
-        buffer.set_modified(false);
-
-        {
-            let sender = sender.clone();
-            buffer.connect_changed(move |_| {
-                sender.input(Msg::BufferChanged);
-            });
-        }
+        let buffer = build_buffer(&sender);
+        connect_style_changes(&sender);
 
         let web_view = preview::build_preview(&sender);
         let editor_css = appearance::build_editor_css();
@@ -343,6 +386,8 @@ impl SimpleComponent for App {
         let widgets = view_output!();
 
         widgets.paned.set_end_child(Some(&web_view));
+        center_paned(&widgets.paned);
+
         model
             .web_view
             .set_visible(model.settings.view_mode.shows_preview());
@@ -373,6 +418,7 @@ impl SimpleComponent for App {
                     self.perform(action, &sender);
                 }
             }
+            Msg::StyleChanged => self.apply_editor_css(),
             Msg::Perform(action) => self.perform(action, &sender),
 
             msg @ (Msg::Save(_)
