@@ -4,7 +4,7 @@
 
 use std::{fs, io, path::PathBuf};
 
-use crate::APP_VER;
+use crate::constants::APP_VER;
 use relm4::adw;
 use relm4::gtk::{gdk, glib};
 use serde::{Deserialize, Serialize};

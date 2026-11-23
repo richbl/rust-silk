@@ -12,9 +12,9 @@ use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
 use webkit6::WebView;
 
+use crate::constants::{APP_VER, DEFAULT_HEIGHT, DEFAULT_WIDTH};
 use crate::preferences::Preferences;
 use crate::settings::{ColorScheme, Settings, ViewMode};
-use crate::{APP_VER, DEFAULT_HEIGHT, DEFAULT_WIDTH};
 
 // The menu! macro below refers to these action types by name
 use actions::{AboutAction, PreferencesAction, SaveAsAction, register_window_actions};
