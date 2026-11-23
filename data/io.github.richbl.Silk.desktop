@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+
+Name=Silk
+Comment=Silk is a fast and simple Markdown viewer/editor
+
+Exec=silk-markdown-editor
+Icon=io.github.richbl.Silk
+
+Terminal=false
+StartupNotify=true
+Categories=Utility;System;
+Keywords=markdown;editor;viewer

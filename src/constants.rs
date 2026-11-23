@@ -1,4 +1,11 @@
 //! Application-wide constants
+//!
+
+/// The name of the application
+pub const APP_NAME: &str = "Silk";
+
+/// One-line description of the application
+pub const ABOUT: &str = "A minimal Markdown editor for GNOME";
 
 /// The application ID used for GTK/GLib registration
 pub const APP_ID: &str = "io.github.richbl.Silk";

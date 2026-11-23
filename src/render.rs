@@ -37,7 +37,7 @@ const SHELL: &str = r#"<!DOCTYPE html>
     margin: 0;
     padding: 24px;
   }
-  main { max-width: 800px; margin: 0 auto; }
+  main { max-width: 80ch; margin: 0 auto; }
   img { max-width: 100%; }
   pre, code { font-family: ui-monospace, monospace; background: rgba(127,127,127,.15); border-radius: 4px; }
   pre { padding: 12px; overflow-x: auto; }
