@@ -22,6 +22,7 @@ pub struct Preferences {
 pub enum PrefsMsg {
     /// Replace local state with the application's current state
     Sync(Settings),
+    SyncScroll(bool),
     ViewMode(ViewMode),
     Scheme(ColorScheme),
     EditorCustom(bool),
@@ -57,6 +58,7 @@ impl SimpleComponent for Preferences {
             set_title: "Preferences",
 
             add = &adw::PreferencesPage {
+
                 add = &adw::PreferencesGroup {
                     set_title: "Layout",
 
@@ -66,6 +68,14 @@ impl SimpleComponent for Preferences {
                         set_model: Some(&gtk::StringList::new(&ViewMode::LABELS)),
                         #[watch]
                         set_selected: model.settings.view_mode.index(),
+                    },
+
+                    #[name = "sync_row"]
+                    add = &adw::SwitchRow {
+                        set_title: "Synchronized Scrolling",
+                        set_subtitle: "Scroll the editor and preview together.",
+                        #[watch]
+                        set_active: model.settings.sync_scroll,
                     },
                 },
 
@@ -159,6 +169,10 @@ impl SimpleComponent for Preferences {
         widgets.preview_row.connect_active_notify(move |row| {
             s.input(PrefsMsg::PreviewCustom(row.is_active()));
         });
+        let s = sender.clone();
+        widgets.sync_row.connect_active_notify(move |row| {
+            s.input(PrefsMsg::SyncScroll(row.is_active()));
+        });
         let s = sender;
         widgets.preview_color.connect_rgba_notify(move |b| {
             s.input(PrefsMsg::PreviewColor(b.rgba()));
@@ -176,6 +190,7 @@ impl SimpleComponent for Preferences {
                 self.settings = settings;
                 return;
             }
+            PrefsMsg::SyncScroll(on) => next.sync_scroll = on,
             PrefsMsg::ViewMode(mode) => next.view_mode = mode,
             PrefsMsg::Scheme(scheme) => next.color_scheme = scheme,
             PrefsMsg::EditorCustom(on) => {

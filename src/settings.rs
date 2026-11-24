@@ -125,14 +125,28 @@ impl ColorScheme {
 }
 
 /// Settings elements
-#[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub view_mode: ViewMode,
     pub color_scheme: ColorScheme,
     pub editor_background: Option<String>,
     pub preview_background: Option<String>,
+    pub sync_scroll: bool,
     pub window: WindowSettings,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            view_mode: ViewMode::default(),
+            color_scheme: ColorScheme::default(),
+            editor_background: None,
+            preview_background: None,
+            sync_scroll: true,
+            window: WindowSettings::default(),
+        }
+    }
 }
 
 impl Settings {
