@@ -44,7 +44,8 @@ impl App {
 
 // Build the preview web view and handle loading and external links
 pub(super) fn build_preview(sender: &ComponentSender<App>) -> WebView {
-    let web_view = WebView::new();
+    let manager = super::scroll::build_content_manager(sender);
+    let web_view = WebView::builder().user_content_manager(&manager).build();
     web_view.set_hexpand(true);
     web_view.set_vexpand(true);
 

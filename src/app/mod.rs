@@ -4,12 +4,14 @@ mod actions;
 mod appearance;
 mod file;
 mod preview;
+mod scroll;
 mod view_menu;
 
 use relm4::adw;
 use relm4::adw::prelude::*;
 use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
+use scroll::ScrollSync;
 use webkit6::WebView;
 
 use crate::constants::{ABOUT, APP_ID, APP_NAME, APP_VER};
@@ -49,6 +51,8 @@ pub enum Msg {
     SetViewMode(ViewMode),
     SetColorScheme(ColorScheme),
     SettingsChanged(Settings),
+    EditorScrolled(f64),
+    PreviewScrolled(f64),
     StyleChanged,
     ShowPreferences,
     ShowAbout,
@@ -62,6 +66,8 @@ pub struct App {
     buffer: gtk::TextBuffer,
     web_view: WebView,
     editor_css: gtk::CssProvider,
+    editor_vert_adj: gtk::Adjustment,
+    sync: ScrollSync,
     preferences: Controller<Preferences>,
     radios: ViewRadios,
     settings: Settings,
@@ -324,6 +330,7 @@ impl SimpleComponent for App {
 
                         #[wrap(Some)]
                         set_start_child = &gtk::ScrolledWindow {
+                            set_vadjustment: Some(&model.editor_vert_adj),
                             set_hexpand: true,
                             set_vexpand: true,
                             #[watch]
@@ -371,6 +378,7 @@ impl SimpleComponent for App {
         let editor_css = appearance::build_editor_css();
         let toasts = adw::ToastOverlay::new();
         let (view_popover, radios) = build_view_popover(&sender, &settings);
+        let editor_vert_adj = scroll::build_editor_adjustment(&sender);
         let preferences = Preferences::builder()
             .launch(settings.clone())
             .forward(sender.input_sender(), Msg::SettingsChanged);
@@ -381,6 +389,8 @@ impl SimpleComponent for App {
             buffer: buffer.clone(),
             web_view: web_view.clone(),
             editor_css,
+            editor_vert_adj,
+            sync: ScrollSync::default(),
             preferences,
             radios,
             settings,
@@ -429,6 +439,7 @@ impl SimpleComponent for App {
                     self.perform(action, &sender);
                 }
             }
+
             Msg::StyleChanged => self.apply_editor_css(),
             Msg::Perform(action) => self.perform(action, &sender),
 
@@ -440,6 +451,8 @@ impl SimpleComponent for App {
             | Msg::Loaded(_, _)) => {
                 self.update_file(msg, &sender);
             }
+
+            msg @ (Msg::EditorScrolled(_) | Msg::PreviewScrolled(_)) => self.update_scroll(&msg),
 
             msg @ (Msg::SetViewMode(_) | Msg::SetColorScheme(_) | Msg::SettingsChanged(_)) => {
                 self.update_settings(msg);
