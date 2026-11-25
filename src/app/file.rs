@@ -160,9 +160,54 @@ fn markdown_dialog(title: &str) -> gtk::FileDialog {
         .build()
 }
 
+// The toast text for a failed dialog operation, or `None` when the user simply dismissed
+// or cancelled the dialog
+fn dialog_error_message(error: &glib::Error, context: &str) -> Option<String> {
+    if error.matches(gtk::DialogError::Dismissed) || error.matches(gtk::DialogError::Cancelled) {
+        None
+    } else {
+        Some(format!("{context}: {}", error.message()))
+    }
+}
+
 // Handle errors from asynchronous file dialogs or other operations
 fn report_dialog_error(sender: &ComponentSender<App>, error: &glib::Error, context: &str) {
-    if !(error.matches(gtk::DialogError::Dismissed) || error.matches(gtk::DialogError::Cancelled)) {
-        sender.input(Msg::Toast(format!("{context}: {}", error.message())));
+    if let Some(message) = dialog_error_message(error, context) {
+        sender.input(Msg::Toast(message));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dismissed_dialog_is_not_reported() {
+        let error = glib::Error::new(gtk::DialogError::Dismissed, "dismissed");
+        assert_eq!(dialog_error_message(&error, "Could not open file"), None);
+    }
+
+    #[test]
+    fn cancelled_dialog_is_not_reported() {
+        let error = glib::Error::new(gtk::DialogError::Cancelled, "cancelled");
+        assert_eq!(dialog_error_message(&error, "Could not open file"), None);
+    }
+
+    #[test]
+    fn failed_dialog_is_reported_with_context() {
+        let error = glib::Error::new(gtk::DialogError::Failed, "boom");
+        assert_eq!(
+            dialog_error_message(&error, "Could not open file").as_deref(),
+            Some("Could not open file: boom")
+        );
+    }
+
+    #[test]
+    fn errors_from_other_domains_are_reported() {
+        let error = glib::Error::new(glib::FileError::Noent, "no such file");
+        assert_eq!(
+            dialog_error_message(&error, "Could not save file").as_deref(),
+            Some("Could not save file: no such file")
+        );
     }
 }
