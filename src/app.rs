@@ -12,6 +12,7 @@ use relm4::adw::prelude::*;
 use relm4::gtk::{self, gio, glib};
 use relm4::prelude::*;
 use scroll::ScrollSync;
+use std::path::Path;
 use webkit6::WebView;
 
 use crate::constants::{ABOUT, APP_ID, APP_NAME, APP_VER};
@@ -25,7 +26,7 @@ use view_menu::{ViewRadios, build_view_popover};
 /// Issue tracker used by the "Report an issue" row
 const ISSUE_URL: &str = "https://github.com/richbl/rust-silk/issues/new?template=issue-report.md";
 
-/// Actions that discard the current document and therefore must first respect unsaved changes
+/// Actions that discard the current document (and so must first respect unsaved changes)
 #[derive(Debug, Clone, Copy)]
 pub enum Action {
     New,
@@ -38,7 +39,7 @@ pub enum Action {
 pub enum Msg {
     BufferChanged,
     PreviewLoaded,
-    /// Run `Action`, asking about unsaved changes first...
+    /// Run `Action`, asking first about unsaved changes...
     Request(Action),
     /// Run `Action` unconditionally. Just do it...
     Perform(Action),
@@ -76,35 +77,58 @@ pub struct App {
     preview_ready: bool,
 }
 
+/// Title shown for a document that has not been saved to a file yet
+const UNTITLED: &str = "Untitled Document";
+
+// The name to show for a document, given its file's base name (if any)
+fn display_name(basename: Option<&Path>) -> String {
+    basename.map_or_else(|| UNTITLED.to_owned(), |p| p.to_string_lossy().into_owned())
+}
+
+// The window title: the name, prefixed with a bullet when there are unsaved changes
+fn window_title(name: &str, dirty: bool) -> String {
+    format!("{}{name}", if dirty { "• " } else { "" })
+}
+
+// `Save` is only meaningful when there are unsaved changes or no file yet, while `Save As` must
+// stay available at all times (GNOME HIG)
+fn save_enabled(dirty: bool, has_file: bool) -> bool {
+    dirty || !has_file
+}
+
+// The Markdown shown in a fresh editor buffer
+fn welcome_text() -> String {
+    format!(
+        "# Welcome to {APP_NAME} {APP_VER}\n\n## {ABOUT}\n\nStart typing **Markdown** on the left, \
+        and it'll get rendered on the right.\n\n- Open, edit and save files\n\
+        - Choose which panes to show\n- Customize color themes/background colors in *Preferences*\n"
+    )
+}
+
 impl App {
     // Returns the file name for the window title
     fn name(&self) -> String {
-        self.file
+        let basename = self
+            .file
             .as_ref()
-            .and_then(webkit6::prelude::FileExt::basename)
-            .map_or_else(
-                || "Untitled Document".into(),
-                |p| p.to_string_lossy().into_owned(),
-            )
+            .and_then(webkit6::prelude::FileExt::basename);
+        display_name(basename.as_deref())
     }
 
     // Returns the window title based on the file name and dirty state
     fn title(&self) -> String {
-        format!("{}{}", if self.dirty { "• " } else { "" }, self.name())
+        window_title(&self.name(), self.dirty)
     }
 
+    fn sync_save_action(&self) {
+        self.window
+            .action_set_enabled("win.save", save_enabled(self.dirty, self.file.is_some()));
+    }
     // Returns the text content of the text buffer
     fn text(&self) -> String {
         self.buffer
             .text(&self.buffer.start_iter(), &self.buffer.end_iter(), false)
             .to_string()
-    }
-
-    // Save is only meaningful when there are unsaved changes; Save As must stay available
-    // at all times (GNOME HIG), so only `win.save` is toggled.
-    fn sync_save_action(&self) {
-        self.window
-            .action_set_enabled("win.save", self.dirty || self.file.is_none());
     }
 
     // Replace the buffer content without it being undo-able or counted as an edit
@@ -176,11 +200,11 @@ fn connect_close_request(
             return glib::Propagation::Stop;
         }
 
-        // default_size() tracks normal resizes and ignores maximized/fullscreen forced sizes
+        // `default_size()` tracks normal resizes and ignores maximized/fullscreen forced sizes
         let (width, height) = window.default_size();
 
-        // Re-read from disk: the file already holds the latest preferences, because
-        // apply_settings() saves on every change
+        // Re-read from disk: the file already holds the latest preferences because
+        // `apply_settings()` saves on every change
         let mut settings = Settings::load();
         settings.window = WindowSettings {
             width,
@@ -188,6 +212,7 @@ fn connect_close_request(
             maximized: window.is_maximized(),
             fullscreened: window.is_fullscreen(),
         };
+
         if let Err(e) = settings.save() {
             eprintln!("silk: could not save window state: {e}");
         }
@@ -198,11 +223,7 @@ fn connect_close_request(
 
 // Create the text buffer pre-filled with the welcome text, and notify the app when it changes
 fn build_buffer(sender: &ComponentSender<App>) -> gtk::TextBuffer {
-    let welcome = format!(
-        "# Welcome to {APP_NAME} {APP_VER}\n\n## {ABOUT}\n\nStart typing **Markdown** on the left, \
-        and it'll get rendered on the right.\n\n- Open, edit and save files\n\
-        - Choose which panes to show\n- Customize color themes/background colors in *Preferences*\n"
-    );
+    let welcome = welcome_text();
 
     let buffer = gtk::TextBuffer::new(None::<&gtk::TextTagTable>);
     buffer.set_text(&welcome);
@@ -464,3 +485,6 @@ impl SimpleComponent for App {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

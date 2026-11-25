@@ -32,19 +32,51 @@ pub enum PrefsMsg {
 }
 
 // Color parsing in custom settings
-fn color_or_default(css: Option<&str>) -> gdk::RGBA {
+fn color_or_default(css: Option<&str>, default: &str) -> gdk::RGBA {
     css.and_then(parse_color)
-        .or_else(|| parse_color(&default_custom_color()))
+        .or_else(|| parse_color(default))
         .unwrap_or(gdk::RGBA::WHITE)
 }
 
-// Handle toggling custom color settings
-fn toggle(current: Option<String>, on: bool) -> Option<String> {
+// Handle toggling custom color settings: turning an override on keeps an existing color,
+// or starts from `default`
+fn toggle(current: Option<String>, on: bool, default: &str) -> Option<String> {
     match (current, on) {
         (Some(c), true) => Some(c),
-        (None, true) => Some(default_custom_color()),
+        (None, true) => Some(default.to_owned()),
         (_, false) => None,
     }
+}
+
+// The decision table of the dialog: current state + message in, next state out
+fn apply(current: &Settings, msg: PrefsMsg, default_color: &str) -> Settings {
+    let mut next = current.clone();
+
+    match msg {
+        PrefsMsg::Sync(settings) => return settings,
+        PrefsMsg::SyncScroll(on) => next.sync_scroll = on,
+        PrefsMsg::ViewMode(mode) => next.view_mode = mode,
+        PrefsMsg::Scheme(scheme) => next.color_scheme = scheme,
+        PrefsMsg::EditorCustom(on) => {
+            next.editor_background = toggle(next.editor_background.take(), on, default_color);
+        }
+        PrefsMsg::PreviewCustom(on) => {
+            next.preview_background = toggle(next.preview_background.take(), on, default_color);
+        }
+        // Ignore color notifications while the override is off
+        PrefsMsg::EditorColor(rgba) => {
+            if next.editor_background.is_some() {
+                next.editor_background = Some(rgba.to_str().to_string());
+            }
+        }
+        PrefsMsg::PreviewColor(rgba) => {
+            if next.preview_background.is_some() {
+                next.preview_background = Some(rgba.to_str().to_string());
+            }
+        }
+    }
+
+    next
 }
 
 #[relm4::component(pub)]
@@ -112,7 +144,7 @@ impl SimpleComponent for Preferences {
                             #[watch]
                             set_sensitive: model.settings.editor_background.is_some(),
                             #[watch]
-                            set_rgba: &color_or_default(model.settings.editor_background.as_deref()),
+                            set_rgba: &color_or_default(model.settings.editor_background.as_deref(),&default_custom_color(),),
                         },
                     },
 
@@ -132,7 +164,7 @@ impl SimpleComponent for Preferences {
                             #[watch]
                             set_sensitive: model.settings.preview_background.is_some(),
                             #[watch]
-                            set_rgba: &color_or_default(model.settings.preview_background.as_deref()),
+                            set_rgba: &color_or_default(model.settings.preview_background.as_deref(),&default_custom_color(),),
                         },
                     },
                 },
@@ -183,39 +215,22 @@ impl SimpleComponent for Preferences {
 
     // Update the preferences struct implementation and update handler
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
-        let mut next = self.settings.clone();
+        // `Sync` mirrors the application's state
+        let is_sync = matches!(msg, PrefsMsg::Sync(_));
+        let next = apply(&self.settings, msg, &default_custom_color());
 
-        match msg {
-            PrefsMsg::Sync(settings) => {
-                self.settings = settings;
-                return;
-            }
-            PrefsMsg::SyncScroll(on) => next.sync_scroll = on,
-            PrefsMsg::ViewMode(mode) => next.view_mode = mode,
-            PrefsMsg::Scheme(scheme) => next.color_scheme = scheme,
-            PrefsMsg::EditorCustom(on) => {
-                next.editor_background = toggle(next.editor_background.take(), on);
-            }
-            PrefsMsg::PreviewCustom(on) => {
-                next.preview_background = toggle(next.preview_background.take(), on);
-            }
-            // Ignore color notifications while the override is off: they are
-            // produced by the `#[watch]` resetting the button, not by the user
-            PrefsMsg::EditorColor(rgba) => {
-                if next.editor_background.is_some() {
-                    next.editor_background = Some(rgba.to_str().to_string());
-                }
-            }
-            PrefsMsg::PreviewColor(rgba) => {
-                if next.preview_background.is_some() {
-                    next.preview_background = Some(rgba.to_str().to_string());
-                }
-            }
+        if next == self.settings {
+            return;
         }
 
-        if next != self.settings {
+        if is_sync {
+            self.settings = next;
+        } else {
             self.settings = next.clone();
             let _ = sender.output(next);
         }
     }
 }
+
+#[cfg(test)]
+mod tests;
