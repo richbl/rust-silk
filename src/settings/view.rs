@@ -3,6 +3,21 @@
 use relm4::adw;
 use serde::{Deserialize, Serialize};
 
+fn choice_index<T: PartialEq>(choices: &[T], choice: &T) -> u32 {
+    let Some(index) = choices.iter().position(|candidate| candidate == choice) else {
+        return u32::default();
+    };
+
+    u32::try_from(index).unwrap_or_default()
+}
+
+fn choice_from_index<T: Copy + Default>(choices: &[T], index: u32) -> T {
+    match usize::try_from(index) {
+        Ok(index) => choices.get(index).copied().unwrap_or_default(),
+        Err(_) => T::default(),
+    }
+}
+
 /// User preferences view configuration structure
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -19,16 +34,12 @@ impl ViewMode {
 
     /// Get the index of the current view mode
     pub fn index(self) -> u32 {
-        match self {
-            Self::EditorOnly => 0,
-            Self::PreviewOnly => 1,
-            Self::Both => 2,
-        }
+        choice_index(&Self::ALL, &self)
     }
 
     /// Get `ViewMode` from index
     pub fn from_index(index: u32) -> Self {
-        Self::ALL.get(index as usize).copied().unwrap_or_default()
+        choice_from_index(&Self::ALL, index)
     }
 
     /// Are we in editor mode?
@@ -58,16 +69,12 @@ impl ColorScheme {
 
     /// Get the index of the current color scheme
     pub fn index(self) -> u32 {
-        match self {
-            Self::System => 0,
-            Self::Light => 1,
-            Self::Dark => 2,
-        }
+        choice_index(&Self::ALL, &self)
     }
 
     /// Get `ColorScheme` from index
     pub fn from_index(index: u32) -> Self {
-        Self::ALL.get(index as usize).copied().unwrap_or_default()
+        choice_from_index(&Self::ALL, index)
     }
 
     /// Set the color scheme

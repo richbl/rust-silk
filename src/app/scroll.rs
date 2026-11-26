@@ -151,6 +151,15 @@ mod tests {
         sync.handle(true, &Msg::PreviewScrolled(f))
     }
 
+    fn assert_editor_scroll(sync: &mut ScrollSync, f: f64) {
+        assert_eq!(editor(sync, f), Some(ScrollTarget::Preview(f)));
+        assert_eq!(preview(sync, f), None);
+    }
+
+    fn assert_preview_scroll(sync: &mut ScrollSync, f: f64) {
+        assert_eq!(preview(sync, f), Some(ScrollTarget::Editor(f)));
+        assert_eq!(editor(sync, f), None);
+    }
     // ---------------------------------------------------------------------
     // fraction_of
     // ---------------------------------------------------------------------
@@ -419,16 +428,9 @@ mod tests {
     fn alternating_panes_keeps_both_directions_working() {
         let mut sync = ScrollSync::default();
 
-        assert_eq!(editor(&mut sync, 0.3), Some(ScrollTarget::Preview(0.3)));
-        assert_eq!(preview(&mut sync, 0.3), None);
-
-        assert_eq!(preview(&mut sync, 0.6), Some(ScrollTarget::Editor(0.6)));
-        assert_eq!(editor(&mut sync, 0.6), None);
-
-        // Back to where the editor last was driven by the user
-        assert_eq!(editor(&mut sync, 0.3), Some(ScrollTarget::Preview(0.3)));
-        assert_eq!(preview(&mut sync, 0.3), None);
-
-        assert_eq!(preview(&mut sync, 0.0), Some(ScrollTarget::Editor(0.0)));
+        assert_editor_scroll(&mut sync, 0.3);
+        assert_preview_scroll(&mut sync, 0.6);
+        assert_editor_scroll(&mut sync, 0.3);
+        assert_preview_scroll(&mut sync, 0.0);
     }
 }
