@@ -1,4 +1,9 @@
-# Silk Markdown Editor
+<!-- markdownlint-disable MD033 -->
+<!-- markdownlint-disable MD041 -->
+<p align="left">
+<img width="350" alt="Silk logo" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_logo_title.png">
+</p>
+<!-- markdownlint-enable MD041 -->
 
 <!-- markdownlint-disable MD033 -->
 <a href="https://github.com/richbl/rust-silk/releases"><img align="middle" alt="Link to Releases" src="https://badgen.net/github/tag/richbl/rust-silk?icon=github&label=release"></a>
