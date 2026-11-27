@@ -33,16 +33,17 @@ It's also a practical exercise in building a modern, idiomatic [GTK4](https://do
 ### Silk in Action
 
 <!-- markdownlint-disable MD033 -->
+
 <p align="center">
-<img width="60%" alt="Screenshot showing app dark" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_dark.png">
+<img width="90%" alt="Screenshot showing app light" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_light.png">
 </p>
 
 <p align="center">
-<img width="60%" alt="Screenshot showing app light" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_light.png">
+<img width="90%" alt="Screenshot showing app dark" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_dark.png">
 </p>
 
 <p align="center">
-<img width="60%" alt="Screenshot showing app custom" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_custom.png">
+<img width="90%" alt="Screenshot showing app custom" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_ui_custom.png">
 </p>
 
 <!-- markdownlint-enable MD033 -->
