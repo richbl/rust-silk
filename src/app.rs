@@ -330,7 +330,11 @@ impl SimpleComponent for App {
                             set_menu_model: Some(&primary_menu),
                         },
                         pack_end = &gtk::MenuButton {
-                            set_icon_name: "view-dual-symbolic",
+                            #[wrap(Some)]
+                            set_child = &adw::ButtonContent {
+                                set_icon_name: "view-dual-symbolic",
+                                set_label: "View",
+                            },
                             set_tooltip_text: Some("View Options"),
                             set_popover: Some(&view_popover),
                         },
