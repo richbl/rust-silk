@@ -100,7 +100,7 @@ flowchart LR
 To install **Silk**, run the following command:
 
 ```text
-silk-markdown-editor install
+silk-markdown-editor --install
 ```
 
 Everything is installed for the current user (no root access needed):
@@ -118,7 +118,7 @@ The installer honors `XDG_BIN_HOME` and `XDG_DATA_HOME` if set, and warns if the
 To remove **Silk**:
 
 ```text
-silk-markdown-editor uninstall
+silk-markdown-editor --uninstall
 ```
 
 > **Note:** Your **Silk** configuration file is intentionally not removed during the uninstallation process. You must manually remove it from `~/.config/silk/config.toml`.
@@ -159,7 +159,7 @@ cd rust-silk
 cargo build --release
 ```
 
-The resulting executables are located in `target/release/`:
+The resulting executable is located in `target/release/`:
 
 ```text
 target/release/
@@ -182,6 +182,14 @@ silk-markdown-editor
 ```
 
 or launch **Silk** from your desktop environment's application launcher.
+
+When run from a terminal, these options are also available:
+
+| Option | Description |
+| --- | --- |
+| `-h`, `--help` | Print command-line help |
+| `-i`, `--install` | Install Silk for the current user |
+| `-u`, `--uninstall` | Remove Silk for the current user |
 
 The GUI provides graphical controls for file management, a live view of the Markdown editor and preview windows, and automatic saving of configuration preferences.
 

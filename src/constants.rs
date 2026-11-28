@@ -13,6 +13,9 @@ pub const APP_ID: &str = "io.github.richbl.Silk";
 /// The application version string (derived from `Cargo.toml`)
 pub const APP_VER: &str = concat!("v", env!("CARGO_PKG_VERSION"));
 
+/// The CLI name of the Silk executable
+pub const APP_EXECUTABLE: &str = "silk-markdown-editor";
+
 /// Default window width in pixels
 pub const DEFAULT_WIDTH: i32 = 1200;
 
