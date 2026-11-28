@@ -1,7 +1,7 @@
 <!-- markdownlint-disable MD033 -->
 <!-- markdownlint-disable MD041 -->
 <p align="left">
-<img width="300" alt="Silk logo" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_logo_title.png">
+<img width="275" alt="Silk logo" src="https://raw.githubusercontent.com/richbl/rust-silk/refs/heads/main/.github/assets/ui/silk_logo_title.png">
 </p>
 <!-- markdownlint-enable MD041 -->
 
@@ -276,6 +276,7 @@ fullscreened = false
 
 While the intent of the project is to remain minimal, here are some ideas about possible additional features:
 
+* [ ] Add **Silk** to the **Open With...** file dialog in Gnome Files
 * [ ] Flatpak packaging
 * [ ] Recent files list
 * [ ] Find and replace
